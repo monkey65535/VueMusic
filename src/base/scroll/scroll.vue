@@ -21,6 +21,10 @@
       data: {
         type: Array,
         default: null
+      },
+      listenScroll: {
+        type: Boolean,
+        default: false
       }
     },
     mounted() {
@@ -36,6 +40,12 @@
           probeType: this.probeType,
           click: this.click
         })
+        if (this.listenScroll) {
+          let _this = this
+          this.scroll.on('scroll', pos => {
+            _this.$emit('scroll', pos)
+          })
+        }
       },
       enable() {
         // && 如果前面为true，则执行后面内容

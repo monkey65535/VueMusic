@@ -1,5 +1,5 @@
 <template>
-  <Scroll class="listview" :data="data" ref="listView">
+  <Scroll class="listview" :data="data" ref="listView" :listenScroll="listenScroll" @scroll="scroll" :probeType="probeType">
     <ul>
       <li v-for="group in data" class="list-group" :key="group.title" ref="listGroup">
         <h2 class="list-group-title">{{group.title}}</h2>
@@ -11,15 +11,16 @@
         </ul>
       </li>
     </ul>
-    <div class="list-shortcut" @touchstart.prevent.stop="onShortcutTouchStart" @touchmove.stop.prevent="onShortcutTouchMove">
+    <div class="list-shortcut" @touchstart.prevent.stop="onShortcutTouchStart"
+         @touchmove.stop.prevent="onShortcutTouchMove">
       <ul>
         <li v-for="(val,index) in shortcutList" class="item" :data-index="index" :key="index"
-            :class="{'current':focusIndex === index}">
+            :class="{'current':currentIndex === index}">
           {{val}}
         </li>
       </ul>
     </div>
-    <div class="last-fixed">
+    <div class="list-fixed" v-show="fixedTitle">
       <h1 class="fixed-title">{{fixedTitle}}</h1>
     </div>
   </Scroll>
@@ -31,6 +32,9 @@
     name: 'listView',
     created() {
       this.touch = {}
+      this.listenScroll = true
+      this.listHeight = []
+      this.probeType = 3
     },
     props: {
       data: {
@@ -40,7 +44,8 @@
     },
     data() {
       return {
-        focusIndex: 0
+        scrollY: -1,
+        currentIndex: 0
       }
     },
     components: {
@@ -49,7 +54,7 @@
     methods: {
       onShortcutTouchStart(ev) {
         let index = ev.target.getAttribute('data-index')
-        this.focusIndex = parseInt(index)
+        this.currentIndex = parseInt(index)
         let firstTouch = ev.touches[0]
         this.touch.y1 = firstTouch.pageY
         this.touch.anchorIndex = parseInt(index)
@@ -62,8 +67,22 @@
         let anchorIndex = parseInt(this.touch.anchorIndex) + delta
         this._scrollTo(anchorIndex)
       },
+      scroll(pos) {
+        this.scrollY = pos.y
+      },
       _scrollTo(index) {
-        this.$refs['listView'].scrollToElement(this.$refs['listGroup'][index], 400)
+        this.$refs['listView'].scrollToElement(this.$refs['listGroup'][index], 0)
+      },
+      _calculateHeight() {
+        this.listHeight = []
+        const list = this.$refs['listGroup']
+        let height = 0
+        this.listHeight.push(height)
+        for (let i = 0; i < list.length; i++) {
+          let item = list[i]
+          height += item.clientHeight
+          this.listHeight.push(height)
+        }
       }
     },
     computed: {
@@ -71,11 +90,30 @@
         return this.data.map(e => e.title.substr(0, 1))
       },
       fixedTitle() {
-        return this.data[this.focusIndex] ? this.data[this.focusIndex].title : ''
+        return this.data[this.currentIndex] ? this.data[this.currentIndex].title : ''
+      }
+    },
+    watch: {
+      data() {
+        setTimeout(() => {
+          this._calculateHeight()
+        }, 20)
+      },
+      scrollY(newY) {
+        const listHeight = this.listHeight
+        for (let i = 0; i < listHeight.length; i++) {
+          let height1 = listHeight[i]
+          let height2 = listHeight[i + 1]
+          if (!height2 || (-newY > height1 && -newY < height2)) {
+            this.currentIndex = i
+            return
+          }
+        }
+        this.currentIndex = 0
       }
     }
   }
 </script>
 <style lang="stylus">
-  @import './style.styl';
+  @import 'style.styl';
 </style>
